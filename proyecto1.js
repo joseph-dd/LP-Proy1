@@ -1,63 +1,89 @@
 const fs = require('fs');
 
-function analizarExpresion(expresion) {
-  let pila = [];
-
-  for (let i = 0; i < expresion.length; i++) {
-    const char = expresion[i];
-
-    if (char === '(') {
-      pila.push(char);
-    } else if (char === ')') {
-      if (pila.length === 0 || pila.pop() !== '(') {
-        return 'Parentesis sin abrir.';
-      }
-    }
-  }
-
-  if (pila.length > 0) {
-    return 'Parentesis sin cerrar.';
-  }
-
-  const operadores = ['+', '-', '*', '/'];
-
-  for (let i = 0; i < expresion.length; i++) {
-    const char = expresion[i];
-
-    if (operadores.includes(char)) {
-      if (i === 0 || i === expresion.length - 1) {
-        return 'Operador sin segundo término.';
-      }
-
-      const prevChar = expresion[i - 1];
-      const nextChar = expresion[i + 1];
-
-      if (prevChar === '(' || nextChar === ')') {
-        return 'Operador sin segundo término.';
-      }
-    }
-  }
-
-  return null;
+function esDigito(caracter) {
+  return /[0-9]/.test(caracter);
 }
 
-const inputFile = 'archivo.txt';
+function analizadorLexico(expresion) {
+  let tokens = [];
+  let i = 0;
 
-fs.readFile(inputFile, 'utf-8', (err, data) => {
-  if (err) {
-    console.error(`Error al leer el archivo ${inputFile}: ${err}`);
-    return;
+  while (i < expresion.length) {
+    if (esDigito(expresion[i])) {
+      let numero = '';
+      while (i < expresion.length && esDigito(expresion[i])) {
+        numero += expresion[i];
+        i++;
+      }
+      tokens.push({ tipo: 'NUMERO', valor: numero });
+    } else if (expresion[i] === '+' || expresion[i] === '-' || expresion[i] === '*' || expresion[i] === '/' || expresion[i] === '(' || expresion[i] === ')') {
+      tokens.push({ tipo: 'OPERADOR', valor: expresion[i] });
+      i++;
+    } else if (expresion[i] === ' ') {
+      i++;
+    } else {
+      throw new Error('Caracter no reconocido: ' + expresion[i]);
+    }
   }
 
-  const lines = data.split('\n');
+  return tokens;
+}
 
-  lines.forEach((line, index) => {
-    const error = analizarExpresion(line);
+function analizadorSintactico(tokens) {
+  let i = 0;
 
-    if (error) {
-      console.log(`LINEA ${index + 1}: ${line}\nSe ha encontrado 1 error(es): ${error}`);
-    } else {
-      console.log(`LINEA ${index + 1}: ${line}\nSintaxis valida sin errores`);
+  function expresion() {
+    let termino1 = termino();
+    while (i < tokens.length && (tokens[i].valor === '+' || tokens[i].valor === '-')) {
+      i++;
+      let termino2 = termino();
     }
-  });
-});
+  }
+
+  function termino() {
+    let factor1 = factor();
+    while (i < tokens.length && (tokens[i].valor === '*' || tokens[i].valor === '/')) {
+      i++;
+      let factor2 = factor();
+    }
+  }
+
+  function factor() {
+    if (tokens[i].tipo === 'NUMERO') {
+      i++;
+    } else if (tokens[i].valor === '(') {
+      i++;
+      expresion();
+      if (tokens[i].valor === ')') {
+        i++;
+      } else {
+        throw new Error('Error de sintaxis. Falta paréntesis de cierre.');
+      }
+    } else {
+      throw new Error('Error de sintaxis. Se esperaba un número o paréntesis de apertura.');
+    }
+  }
+
+  expresion();
+
+  if (i !== tokens.length) {
+    throw new Error('Error de sintaxis. Expresión incompleta.');
+  }
+}
+
+// Leer archivo de entrada
+const entrada = fs.readFileSync('entrada.txt', 'utf8').trim();
+
+// Analizar léxicamente
+const tokens = analizadorLexico(entrada);
+
+try {
+  // Analizar sintácticamente
+  analizadorSintactico(tokens);
+
+  // La expresión es válida
+  fs.writeFileSync('salida.txt', 'La expresión es válida.');
+} catch (error) {
+  // La expresión es inválida
+  fs.writeFileSync('salida.txt', 'Error: ' + error.message);
+}

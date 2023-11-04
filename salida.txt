@@ -1,2 +1,5 @@
-La expresión 1 es válida.
-La expresión 2 es válida.
+LINEA 1: SINTAXIS OK.
+LINEA 2: SINTAXIS OK.
+LINEA 3: SINTAXIS OK.
+LINEA 4: Error en la expresión (Error de sintaxis. Falta paréntesis de cierre.)
+LINEA 5: Error en la expresión (Error de sintaxis. Se esperaba un paréntesis de apertura.)

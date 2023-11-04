@@ -16,10 +16,12 @@ function analizadorLexico(expresion) {
         i++;
       }
       tokens.push({ tipo: 'NUMERO', valor: numero });
-    } else if (expresion[i] === '+' || expresion[i] === '-' || expresion[i] === '*' || expresion[i] === '/' || expresion[i] === '(' || expresion[i] === ')') {
-      tokens.push({ tipo: 'OPERADOR', valor: expresion[i] });
-      i++;
-    } else if (expresion[i] === ' ') {
+    } else if (expresion[i] === '+' || expresion[i] === '-' || expresion[i] === '*' || expresion[i] === '/' || expresion[i] === '(' || expresion[i] === ')' || expresion[i] === ' ' || expresion[i] === '\n') {
+      // Agregar el salto de línea como caracter válido
+      if (expresion[i] !== ' ' && expresion[i] !== '\n') {
+        // Ignorar el espacio y el salto de línea
+        tokens.push({ tipo: 'OPERADOR', valor: expresion[i] });
+      }
       i++;
     } else {
       throw new Error('Caracter no reconocido: ' + expresion[i]);
@@ -70,20 +72,24 @@ function analizadorSintactico(tokens) {
     throw new Error('Error de sintaxis. Expresión incompleta.');
   }
 }
+// Leer archivo de entrada línea por línea
+const lineas = fs.readFileSync('entrada.txt', 'utf8').trim().split('\n');
 
-// Leer archivo de entrada
-const entrada = fs.readFileSync('entrada.txt', 'utf8').trim();
+// Limpiar el archivo de salida antes de escribir en él
+fs.writeFileSync('salida.txt', '');
 
-// Analizar léxicamente
-const tokens = analizadorLexico(entrada);
+// Analizar cada expresión
+for (let i = 0; i < lineas.length; i++) {
+  const expresion = lineas[i].trim(); // Eliminar el salto de línea
+  const tokens = analizadorLexico(expresion);
 
-try {
-  // Analizar sintácticamente
-  analizadorSintactico(tokens);
+  try {
+    analizadorSintactico(tokens);
 
-  // La expresión es válida
-  fs.writeFileSync('salida.txt', 'La expresión es válida.');
-} catch (error) {
-  // La expresión es inválida
-  fs.writeFileSync('salida.txt', 'Error: ' + error.message);
+    // La expresión es válida
+    fs.appendFileSync('salida.txt', `La expresión ${i + 1} es válida.\n`);
+  } catch (error) {
+    // La expresión es inválida
+    fs.appendFileSync('salida.txt', `Error en la expresión ${i + 1}: ${error.message}\n`);
+  }
 }

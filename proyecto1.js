@@ -20,26 +20,45 @@ function analizadorLexico(expresion) {
         numero += expresion[i];
         i++;
       }
-      if (numero[0] === '.' || numero[numero.length - 1] === '.'){
+      if (numero[0] === '.' || numero[numero.length - 1] === '.') {
         tokens.push({ tipo: 'NUMERO', valor: '--' });
         erroresLexicos++;
+        i++;
       } else {
         tokens.push({ tipo: 'NUMERO', valor: numero });
-      } 
+      }
     } else if (esLetra(expresion[i])) {
       let variable = '';
       while (i < expresion.length && esLetra(expresion[i])) {
         variable += expresion[i];
         i++;
       }
-      if (variable === 'sqrt' || variable === 'ln' || variable === 'sen' || variable === 'cos' || variable === 'tan' 
-        || variable === 'arcsen' || variable === 'arccos' || variable === 'arctan'){
+      if (
+        variable === 'sen' ||
+        variable === 'cos' ||
+        variable === 'tan' ||
+        variable === 'sqrt' ||
+        variable === 'ln' ||
+        variable === 'f' ||
+        variable === 'arcsen' ||
+        variable === 'arccos' ||
+        variable === 'arctan'
+      ) {
         tokens.push({ tipo: 'FUNCION', valor: variable });
       } else {
         tokens.push({ tipo: 'VARIABLE', valor: variable });
       }
-    } else if (expresion[i] === '+' || expresion[i] === '*' || expresion[i] === '/' || expresion[i] === '(' || expresion[i] === ')' 
-      || expresion[i] === '^' || expresion[i] === '=' || expresion[i] === ' ' || expresion[i] === '\n') {
+    } else if (
+      expresion[i] === '+' ||
+      expresion[i] === '*' ||
+      expresion[i] === '/' ||
+      expresion[i] === '(' ||
+      expresion[i] === ')' ||
+      expresion[i] === '^' ||
+      expresion[i] === '=' ||
+      expresion[i] === ' ' ||
+      expresion[i] === '\n'
+    ) {
       if (expresion[i] !== ' ' && expresion[i] !== '\n') {
         tokens.push({ tipo: 'OPERADOR', valor: expresion[i] });
       }
@@ -52,20 +71,28 @@ function analizadorLexico(expresion) {
           numeroNegativo += expresion[i];
           i++;
         }
-        tokens.push({ tipo: 'NUMERO', valor: numeroNegativo });
+        if (
+          numeroNegativo[0] === '.' ||
+          numeroNegativo[numeroNegativo.length - 1] === '.'
+        ) {
+          tokens.push({ tipo: 'NUMERO', valor: '--' });
+          erroresLexicos++;
+          i++;
+        } else {
+          tokens.push({ tipo: 'NUMERO', valor: numeroNegativo });
+        }
       } else {
         tokens.push({ tipo: 'OPERADOR', valor: '-' });
         i++;
       }
-    }else {
+    } else {
       erroresLexicos++;
       i++;
     }
   }
 
-  return {tokens, erroresLexicos};
+  return { tokens, erroresLexicos };
 }
-
 function analizadorSintactico(tokens) {
   let i = 0;
   let erroresSintacticos = 0;
@@ -107,12 +134,7 @@ function analizadorSintactico(tokens) {
       i++;
     }
     if (i < tokens.length && (tokens[i].tipo === 'NUMERO' || tokens[i].tipo === 'VARIABLE')) {
-      if (tokens[i].valor !== '--'){
-        i++;
-      } else {
-        erroresSintacticos++;
-        i++;
-      }
+      i++;
     } else if (i < tokens.length && tokens[i].tipo === 'FUNCION') {
       if (i + 1 < tokens.length && tokens[i + 1].valor === '(') {
         i += 2;
@@ -121,11 +143,9 @@ function analizadorSintactico(tokens) {
           i++;
         } else {
           erroresSintacticos++;
-          i++;
         }
       } else {
         erroresSintacticos++;
-        i++;
       }
     }else if (i < tokens.length && tokens[i].valor === '(') {
       i++;
@@ -134,11 +154,9 @@ function analizadorSintactico(tokens) {
         i++;
       } else {
         erroresSintacticos++;
-        i++;
       }
     } else {
       erroresSintacticos++;
-      i++;
     }
   }
 
@@ -155,7 +173,7 @@ const lineas = fs.readFileSync('entrada.txt', 'utf8').trim().split('\n');
 fs.writeFileSync('salida.txt', '');
 
 for (let i = 0; i < lineas.length; i++) {
-  const expresion = lineas[i].trim(); 
+  const expresion = lineas[i].trim();
   const { tokens, erroresLexicos } = analizadorLexico(expresion);
   const erroresSintacticos = analizadorSintactico(tokens);
 

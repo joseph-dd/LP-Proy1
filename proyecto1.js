@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 function esDigito(caracter) {
-  return /[0-9]/.test(caracter);
+  return /[0-9.]/.test(caracter);
 }
 
 function esLetra(caracter) {
@@ -19,24 +19,43 @@ function analizadorLexico(expresion) {
         numero += expresion[i];
         i++;
       }
-      tokens.push({ tipo: 'NUMERO', valor: numero });
+      if (numero[0] === '.' || numero[numero.length - 1] === '.'){
+        tokens.push({ tipo: 'NUMERO', valor: '--' });
+      } else {
+        tokens.push({ tipo: 'NUMERO', valor: numero });
+      } 
     } else if (esLetra(expresion[i])) {
       let variable = '';
       while (i < expresion.length && esLetra(expresion[i])) {
         variable += expresion[i];
         i++;
       }
-      if (variable === 'sqrt' || variable === 'e' || variable === 'ln' || variable === 'sen' || variable === 'cos' || variable === 'tan' || variable === 'arcsen' || variable === 'arccos' || variable === 'arctan'){
+      if (variable === 'sqrt' || variable === 'ln' || variable === 'sen' || variable === 'cos' || variable === 'tan' 
+        || variable === 'arcsen' || variable === 'arccos' || variable === 'arctan'){
         tokens.push({ tipo: 'FUNCION', valor: variable });
       } else {
         tokens.push({ tipo: 'VARIABLE', valor: variable });
       }
-    } else if (expresion[i] === '+' || expresion[i] === '-' || expresion[i] === '*' || expresion[i] === '/' || expresion[i] === '(' || expresion[i] === ')' || expresion[i] === '^' || expresion[i] === ' ' || expresion[i] === '\n') {
+    } else if (expresion[i] === '+' || expresion[i] === '*' || expresion[i] === '/' || expresion[i] === '(' || expresion[i] === ')' 
+      || expresion[i] === '^' || expresion[i] === '=' || expresion[i] === ' ' || expresion[i] === '\n') {
       if (expresion[i] !== ' ' && expresion[i] !== '\n') {
         tokens.push({ tipo: 'OPERADOR', valor: expresion[i] });
       }
       i++;
-    } else {
+    } else if (expresion[i] === '-') {
+      if (i + 1 < expresion.length && esDigito(expresion[i + 1])) {
+        let numeroNegativo = '-';
+        i++;
+        while (i < expresion.length && esDigito(expresion[i])) {
+          numeroNegativo += expresion[i];
+          i++;
+        }
+        tokens.push({ tipo: 'NUMERO', valor: numeroNegativo });
+      } else {
+        tokens.push({ tipo: 'OPERADOR', valor: '-' });
+        i++;
+      }
+    }else {
       throw new Error('Caracter no reconocido: ' + expresion[i]);
     }
   }
@@ -52,7 +71,7 @@ function analizadorSintactico(tokens) {
 
   function expresion() {
     let termino1 = termino();
-    while (i < tokens.length && (tokens[i].valor === '+' || tokens[i].valor === '-')) {
+    while (i < tokens.length && (tokens[i].valor === '+' || tokens[i].valor === '-' || tokens[i].valor === '=' )) {
       i++;
       let termino2 = termino();
     }
@@ -67,16 +86,21 @@ function analizadorSintactico(tokens) {
   }
 
   function factor() {
-    if (tokens[i].tipo === 'NUMERO' || tokens[i].tipo === 'VARIABLE') {
+    if (i < tokens.length && tokens[i].valor === '-') {
       i++;
+    }
+    if (tokens[i].tipo === 'NUMERO' || tokens[i].tipo === 'VARIABLE') {
+      if (tokens[i].valor !== '--'){
+        i++;
+      } else {
+        throw new Error('Error en Sintaxis. Decimal incompleto');
+      }
     } else if (tokens[i].tipo === 'FUNCION') {
-      // Verificar si hay un paréntesis de apertura '(' después del token de función
       if (i + 1 < tokens.length && tokens[i + 1].valor === '(') {
-        i += 2; // Avanzar dos tokens para saltar el token de función y el '('
+        i += 2;
         expresion();
-        // Verificar si hay un paréntesis de cierre ')' después de la expresión
         if (i < tokens.length && tokens[i].valor === ')') {
-          i++; // Avanzar para saltar el ')'
+          i++;
         } else {
           throw new Error('Error de sintaxis. Falta paréntesis de cierre.');
         }
@@ -102,24 +126,21 @@ function analizadorSintactico(tokens) {
     throw new Error('Error de sintaxis. Expresión incompleta.');
   }
 }
-// Leer archivo de entrada línea por línea
+
 const lineas = fs.readFileSync('entrada.txt', 'utf8').trim().split('\n');
 
-// Limpiar el archivo de salida antes de escribir en él
 fs.writeFileSync('salida.txt', '');
 
-// Analizar cada expresión
 for (let i = 0; i < lineas.length; i++) {
-  const expresion = lineas[i].trim(); // Eliminar el salto de línea
+  const expresion = lineas[i].trim(); 
   const tokens = analizadorLexico(expresion);
 
   try {
     analizadorSintactico(tokens);
 
-    // La expresión es válida
     fs.appendFileSync('salida.txt', `LINEA ${i + 1}: SINTAXIS OK.\n`);
   } catch (error) {
-    // La expresión es inválida
+    
     fs.appendFileSync('salida.txt', `LINEA ${i + 1}: Error en la expresión (${error.message})\n`);
   }
 }

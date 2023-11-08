@@ -11,6 +11,7 @@ function esLetra(caracter) {
 function analizadorLexico(expresion) {
   let tokens = [];
   let i = 0;
+  let erroresLexicos = 0;
 
   while (i < expresion.length) {
     if (esDigito(expresion[i])) {
@@ -21,6 +22,7 @@ function analizadorLexico(expresion) {
       }
       if (numero[0] === '.' || numero[numero.length - 1] === '.'){
         tokens.push({ tipo: 'NUMERO', valor: '--' });
+        erroresLexicos++;
       } else {
         tokens.push({ tipo: 'NUMERO', valor: numero });
       } 
@@ -56,32 +58,47 @@ function analizadorLexico(expresion) {
         i++;
       }
     }else {
-      throw new Error('Caracter no reconocido: ' + expresion[i]);
+      erroresLexicos++;
+      i++;
     }
   }
 
-  return tokens;
+  return {tokens, erroresLexicos};
 }
 
 function analizadorSintactico(tokens) {
   let i = 0;
-  if (tokens.length === 0) {
-    throw new Error('Error de sintaxis. Expresion incompleta.');
-  }
+  let erroresSintacticos = 0;
 
   function expresion() {
-    let termino1 = termino();
-    while (i < tokens.length && (tokens[i].valor === '+' || tokens[i].valor === '-' || tokens[i].valor === '=' )) {
-      i++;
-      let termino2 = termino();
+    if (i < tokens.length) {
+      termino();
+      while (i < tokens.length && (tokens[i].valor === '+' || tokens[i].valor === '-' || tokens[i].valor === '=' )) {
+        i++;
+        if (i < tokens.length) {
+          termino();
+        } else {
+          erroresSintacticos++;
+        }
+      }
+    } else {
+      erroresSintacticos++;
     }
   }
 
   function termino() {
-    let factor1 = factor();
-    while (i < tokens.length && (tokens[i].valor === '*' || tokens[i].valor === '/' || tokens[i].valor === '^')) {
-      i++;
-      let factor2 = factor();
+    if (i < tokens.length) {
+      factor();
+      while (i < tokens.length && (tokens[i].valor === '*' || tokens[i].valor === '/' || tokens[i].valor === '^')) {
+        i++;
+        if (i < tokens.length) {
+          factor();
+        } else {
+          erroresSintacticos++;
+        }
+      }
+    } else {
+      erroresSintacticos++;
     }
   }
 
@@ -89,42 +106,48 @@ function analizadorSintactico(tokens) {
     if (i < tokens.length && tokens[i].valor === '-') {
       i++;
     }
-    if (tokens[i].tipo === 'NUMERO' || tokens[i].tipo === 'VARIABLE') {
+    if (i < tokens.length && (tokens[i].tipo === 'NUMERO' || tokens[i].tipo === 'VARIABLE')) {
       if (tokens[i].valor !== '--'){
         i++;
       } else {
-        throw new Error('Error en Sintaxis. Decimal incompleto');
+        erroresSintacticos++;
+        i++;
       }
-    } else if (tokens[i].tipo === 'FUNCION') {
+    } else if (i < tokens.length && tokens[i].tipo === 'FUNCION') {
       if (i + 1 < tokens.length && tokens[i + 1].valor === '(') {
         i += 2;
         expresion();
         if (i < tokens.length && tokens[i].valor === ')') {
           i++;
         } else {
-          throw new Error('Error de sintaxis. Falta paréntesis de cierre.');
+          erroresSintacticos++;
+          i++;
         }
       } else {
-        throw new Error('Error de sintaxis. Se esperaba un paréntesis de apertura.');
+        erroresSintacticos++;
+        i++;
       }
-    }else if (tokens[i].valor === '(') {
+    }else if (i < tokens.length && tokens[i].valor === '(') {
       i++;
       expresion();
-      if (tokens[i].valor === ')') {
+      if (i < tokens.length && tokens[i].valor === ')') {
         i++;
       } else {
-        throw new Error('Error de sintaxis. Falta paréntesis de cierre.');
+        erroresSintacticos++;
+        i++;
       }
     } else {
-      throw new Error('Error de sintaxis. Se esperaba un número o paréntesis de apertura.');
+      erroresSintacticos++;
+      i++;
     }
   }
 
   expresion();
 
   if (i !== tokens.length) {
-    throw new Error('Error de sintaxis. Expresión incompleta.');
+    erroresSintacticos++;
   }
+  return erroresSintacticos;
 }
 
 const lineas = fs.readFileSync('entrada.txt', 'utf8').trim().split('\n');
@@ -133,14 +156,14 @@ fs.writeFileSync('salida.txt', '');
 
 for (let i = 0; i < lineas.length; i++) {
   const expresion = lineas[i].trim(); 
-  const tokens = analizadorLexico(expresion);
+  const { tokens, erroresLexicos } = analizadorLexico(expresion);
+  const erroresSintacticos = analizadorSintactico(tokens);
 
-  try {
-    analizadorSintactico(tokens);
+  const totalErrores = erroresLexicos + erroresSintacticos;
 
+  if (totalErrores === 0) {
     fs.appendFileSync('salida.txt', `LINEA ${i + 1}: SINTAXIS OK.\n`);
-  } catch (error) {
-    
-    fs.appendFileSync('salida.txt', `LINEA ${i + 1}: Error en la expresión (${error.message})\n`);
+  } else {
+    fs.appendFileSync('salida.txt', `LINEA ${i + 1}: ${totalErrores} error(es) en la expresión.\n`);
   }
 }
